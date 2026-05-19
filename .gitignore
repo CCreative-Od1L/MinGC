@@ -1,0 +1,71 @@
+## Build outputs
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww]in32/
+[Aa]rm64/
+[Bb]in/
+[Oo]bj/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.lib
+*.exp
+*.obj
+*.idb
+*.ipdb
+*.iobj
+*.aps
+*.ncb
+*.log
+*.tlog
+*.manifest
+*.res
+*.rsp
+*.sbr
+*.tlh
+*.tli
+
+## Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VSWorkspaceState.json
+
+## Visual Studio Code
+.vscode/
+*.code-workspace
+
+## Precompiled Headers
+*.pch
+*.gch
+
+## CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CMakeUserPresets.json
+CTestTestfile.cmake
+Makefile
+*.cmake
+!_deps/
+
+## JetBrains Rider/CLion
+.idea/
+*.sln.iml
+
+## macOS
+.DS_Store
+
+## Windows
+Thumbs.db
+Desktop.ini
+
+## Project-specific
