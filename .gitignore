@@ -38,8 +38,6 @@ x86/
 *.userosscache
 *.sln.docstates
 *.VSWorkspaceState.json
-*.slnx
-MinGC/
 
 ## Visual Studio Code
 .vscode/

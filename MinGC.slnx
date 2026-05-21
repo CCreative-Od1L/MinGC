@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="MinGC/MinGC.vcxproj" Id="715660d8-59d6-46a9-9f75-7f807ff1f6d8" />
+</Solution>

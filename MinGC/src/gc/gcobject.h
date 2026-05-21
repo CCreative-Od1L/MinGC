@@ -1,5 +1,5 @@
 #pragma once
-#include <iostream>
+#include <cstdint>
 
 using header_t = uint32_t;
 constexpr auto HEADER_ALIGN = 4;	// 设置内存对齐为4位
@@ -29,5 +29,29 @@ struct GCObject {
 	// 获取分配的对象空间大小
 	uint32_t get_size() const {
 		return header >> 5;
+	}
+
+	// 是否被标记
+	bool is_marked() const {
+		return header & 1; 
+	}
+	// 设置标记
+	void set_mark() {
+		header |= 1;
+	}
+	// 清除标记
+	void clear_mark() {
+		header &= ~1;
+	}
+
+	// 获取对象的年龄
+	uint8_t get_age() const {
+		return (header >> 1) & 0xf;
+	}
+	// 增加对象的年龄
+	void inc_age() {
+		uint8_t age = get_age();
+		age = (age + 1) & 0xf;
+		header = (header & ~0x1e) | (age << 1);
 	}
 };
