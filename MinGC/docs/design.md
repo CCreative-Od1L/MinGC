@@ -71,9 +71,9 @@
 
 ## 阶段规划
 
-| 阶段 | 内容 | 状态 |
-|------|------|------|
-| Stage 1 | GCObject Header + Heap + Space + Allocator（基本分配） | 进行中 |
+| 阶段 | 内容 | 文件 | 状态 |
+|------|------|------|------|
+| Stage 1 | GCObject Header + Space + Heap + Allocator（基本分配） | `src/gc/gcobject.h`<br>`src/memory/space.hpp`<br>`src/memory/heap.hpp`<br>`src/memory/allocator.hpp` | 进行中 |
 | Stage 2 | GC Roots + 三色标记 | 未开始 |
 | Stage 3 | 复制算法（Minor GC）+ 对象晋升 | 未开始 |
 | Stage 4 | 标记-清除 / 标记-整理（Full GC） | 未开始 |
@@ -82,13 +82,27 @@
 ## 模块依赖
 
 ```
+MinGC/
+├── src/
+│   ├── gc/
+│   │   └── gcobject.h
+│   └── memory/
+│       ├── space.hpp
+│       ├── heap.hpp
+│       └── allocator.hpp
+└── main.cpp (待实现)
+```
+
+依赖关系：
+
+```
 main.cpp
    │
    ▼
-allocator.h ──► heap.h ──► space.h
+allocator.hpp ──► heap.hpp ──► space.hpp
    │               │
    ▼               ▼
-gcobject.h    gcobject.h
+gcobject.h      gcobject.h
 ```
 
 ## 设计决策记录

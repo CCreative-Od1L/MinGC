@@ -13,10 +13,19 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="头文件\gc">
+      <UniqueIdentifier>{b2dc90a8-64b4-4d34-af1c-abbefb51660d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\memory">
+      <UniqueIdentifier>{140192e9-16e9-4ab9-bb64-d4387d0212ae}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\gc\gcobject.h">
-      <Filter>头文件</Filter>
+    <ClInclude Include="src\gc\gcobject.h">
+      <Filter>头文件\gc</Filter>
+    </ClInclude>
+    <ClInclude Include="src\memory\space.h">
+      <Filter>头文件\memory</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
