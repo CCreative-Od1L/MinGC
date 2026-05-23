@@ -27,5 +27,16 @@
     <ClInclude Include="src\memory\space.h">
       <Filter>头文件\memory</Filter>
     </ClInclude>
+    <ClInclude Include="src\memory\heap.h">
+      <Filter>头文件\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="src\memory\allocator.h">
+      <Filter>头文件\memory</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

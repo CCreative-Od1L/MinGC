@@ -20,7 +20,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\gc\gcobject.h" />
+    <ClInclude Include="src\memory\allocator.h" />
+    <ClInclude Include="src\memory\heap.h" />
     <ClInclude Include="src\memory\space.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
