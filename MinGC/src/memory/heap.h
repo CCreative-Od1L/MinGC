@@ -14,7 +14,6 @@ struct Heap
 	Space s0;
 	Space s1;
 	Space old;
-	// 初始化函数	
 	Heap() {
 		uint8_t* buffer = new uint8_t[TOTAL_HEAP];
 
@@ -23,7 +22,6 @@ struct Heap
 		s1 = {s0.end, s0.end, s0.end + SURVIVOR_SIZE};
 		old = {s1.end, s1.end, s1.end + OLD_SIZE};
 	}
-	// 分配空间
 	void* allocate(size_t user_size) {
 		if (user_size > MAX_OBJECT_SIZE) {
 			return nullptr;
@@ -36,14 +34,22 @@ struct Heap
 		collect_minor_gc();
 		return eden.allocate(user_size);
 	}
-	// 判断用户指针的位置
 	SpaceType which_ptr(void* ptr) const {
 		if (eden.contains(ptr)) return SpaceType::Eden;
-		if (s0.contains(ptr)) return SpaceType::S0;
-		if (s1.contains(ptr)) return SpaceType::S1;
+		if (s0.contains(ptr))  return SpaceType::S0;
+		if (s1.contains(ptr))  return SpaceType::S1;
 		if (old.contains(ptr)) return SpaceType::Old;
 		return SpaceType::Unknown;
 	}
-	// 执行新生代的回收
-	void collect_minor_gc() {};
+	void collect_minor_gc();
 };
+
+extern Heap heap;
+
+inline void* gc_malloc(size_t size) {
+	return heap.allocate(size);
+}
+
+inline SpaceType which_ptr(void* ptr) {
+	return heap.which_ptr(ptr);
+}

@@ -11,6 +11,8 @@ struct Space
 	// 分配空间
 	void* allocate(size_t user_size) {
 		size_t total_size = sizeof(GCObject) + user_size;
+		// 分配空间字节对齐
+		total_size = (total_size + HEADER_ALIGN - 1) & ~(HEADER_ALIGN - 1);
 		if (top + total_size > end) {
 			return nullptr;
 		}
