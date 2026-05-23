@@ -3,6 +3,7 @@
 
 using header_t = uint32_t;
 constexpr auto HEADER_ALIGN = 4;	// 设置内存对齐为4位
+constexpr auto MAX_OBJECT_SIZE = 128 * 1024 * 1024;
 
 struct GCObject {
 	/*
