@@ -6,6 +6,8 @@ constexpr auto SURVIVOR_SIZE = 1 * 1024 * 1024;
 constexpr auto OLD_SIZE = 10 * 1024 * 1024;
 constexpr auto TOTAL_HEAP = EDEN_SIZE + 2 * SURVIVOR_SIZE + OLD_SIZE;
 
+constexpr auto PROMOTION_AGE = 3;
+
 enum class SpaceType { Eden, S0, S1, Old, Unknown };
 
 struct Heap
@@ -14,6 +16,10 @@ struct Heap
 	Space s0;
 	Space s1;
 	Space old;
+	
+	Space* from_space = &s0;
+	Space* to_space = &s1;
+
 	Heap() {
 		uint8_t* buffer = new uint8_t[TOTAL_HEAP];
 
@@ -40,6 +46,10 @@ struct Heap
 		if (s1.contains(ptr))  return SpaceType::S1;
 		if (old.contains(ptr)) return SpaceType::Old;
 		return SpaceType::Unknown;
+	}
+	void swap_survivors() {
+		from_space->reset();
+		std::swap(from_space, to_space);
 	}
 	void collect_minor_gc();
 };

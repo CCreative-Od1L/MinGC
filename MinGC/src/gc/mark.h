@@ -21,9 +21,9 @@ inline void scan_object(GCObject* obj, std::vector<GCObject*>& grey_list) {
 	}
 }
 
-inline void mark_phase() {
+inline void mark_phase(std::vector<GCObject*>& marked_list) {
+	// 灰色对象列表
 	std::vector<GCObject*> grey_list;
-	std::vector<GCObject*> marked_list;
 
 	auto& roots = get_roots();
 	for (auto p : roots) {
@@ -43,7 +43,4 @@ inline void mark_phase() {
 		scan_object(obj, grey_list);
 	}
 
-	for (auto obj : marked_list) {
-		obj->clear_mark();
-	}
 }

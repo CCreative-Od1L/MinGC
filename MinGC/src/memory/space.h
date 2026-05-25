@@ -22,6 +22,13 @@ struct Space
 		return obj->user_ptr();
 	}
 
+	void* allocate_raw(size_t size) {
+		if (top + size > end) return nullptr;
+		uint8_t* ptr = top;
+		top += size;
+		return ptr;
+	}
+
 	// 获取剩余空间
 	size_t remaining() const {
 		return end - top;

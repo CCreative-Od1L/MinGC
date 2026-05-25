@@ -55,4 +55,9 @@ struct GCObject {
 		age = (age + 1) & 0xf;
 		header = (header & ~0x1e) | (age << 1);
 	}
+
+	size_t total_size() const {
+		size_t total = sizeof(GCObject) + get_size();
+		return (total + HEADER_ALIGN - 1) & ~(HEADER_ALIGN - 1);
+	}
 };

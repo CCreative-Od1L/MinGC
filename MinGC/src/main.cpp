@@ -35,10 +35,12 @@ void test_stage2_mark_root() {
 	void* p = gc_malloc(sizeof(void*));
 	gc_add_root(&p);
 
-	mark_phase();
+	std::vector<GCObject*> marked;
+	mark_phase(marked);
 
 	GCObject* obj = GCObject::from_user_ptr(p);
-	assert(!obj->is_marked());  // marks cleared after mark_phase
+	assert(obj->is_marked());
+	for (auto o : marked) o->clear_mark();
 	log_debug("Stage 2: mark_root pass");
 
 	gc_remove_root(&p);
@@ -53,12 +55,14 @@ void test_stage2_mark_chain() {
 
 	gc_add_root(&a);
 
-	mark_phase();
+	std::vector<GCObject*> marked;
+	mark_phase(marked);
 
 	GCObject* objA = GCObject::from_user_ptr(a);
 	GCObject* objB = GCObject::from_user_ptr(b);
-	assert(!objA->is_marked());
-	assert(!objB->is_marked());
+	assert(objA->is_marked());
+	assert(objB->is_marked());
+	for (auto o : marked) o->clear_mark();
 	log_debug("Stage 2: mark_chain pass");
 
 	gc_remove_root(&a);
@@ -67,7 +71,8 @@ void test_stage2_mark_chain() {
 void test_stage2_unreachable_not_marked() {
 	void* p = gc_malloc(sizeof(void*));
 
-	mark_phase();
+	std::vector<GCObject*> marked;
+	mark_phase(marked);
 
 	GCObject* obj = GCObject::from_user_ptr(p);
 	assert(!obj->is_marked());
@@ -100,8 +105,106 @@ void test_stage2_null_root() {
 	void* p = nullptr;
 	gc_add_root(&p);
 
-	mark_phase();  // should not crash with null root
+	std::vector<GCObject*> marked;
+	mark_phase(marked);  // should not crash with null root
 	log_debug("Stage 2: null root pass");
+
+	gc_remove_root(&p);
+}
+
+// --- Stage 3 tests ---
+void test_stage3_copy_and_root_update() {
+	void* p = gc_malloc(sizeof(void*));
+	void* original = p;
+	gc_add_root(&p);
+
+	heap.collect_minor_gc();
+
+	assert(p != original);
+	assert(which_ptr(p) != SpaceType::Eden);
+	log_debug("Stage 3: copy and root update pass");
+
+	gc_remove_root(&p);
+}
+
+void test_stage3_chain_fix() {
+	void* parent = gc_malloc(sizeof(void*));
+	uint64_t* child_data = (uint64_t*)gc_malloc(sizeof(uint64_t));
+	*child_data = 0xDEADBEEFCAFEull;
+	std::memcpy(parent, &child_data, sizeof(void*));
+	gc_add_root(&parent);
+
+	heap.collect_minor_gc();
+
+	uint64_t** pslot = (uint64_t**)parent;
+	assert(*pslot != child_data);
+	assert(**pslot == 0xDEADBEEFCAFEull);
+	log_debug("Stage 3: chain fix pass");
+
+	gc_remove_root(&parent);
+}
+
+void test_stage3_eden_reclaimed() {
+	void* live = gc_malloc(64);
+	gc_add_root(&live);
+	heap.collect_minor_gc();
+
+	void* fresh = gc_malloc(64);
+	assert(fresh != nullptr);
+	assert(which_ptr(fresh) == SpaceType::Eden);
+	log_debug("Stage 3: Eden reclaimed pass");
+
+	gc_remove_root(&live);
+}
+
+void test_stage3_forwarding_dedup() {
+	void* shared = gc_malloc(sizeof(void*));
+	void* r1 = gc_malloc(sizeof(void*));
+	void* r2 = gc_malloc(sizeof(void*));
+	std::memcpy(r1, &shared, sizeof(void*));
+	std::memcpy(r2, &shared, sizeof(void*));
+	gc_add_root(&r1);
+	gc_add_root(&r2);
+
+	heap.collect_minor_gc();
+
+	void* t1 = *(void**)r1;
+	void* t2 = *(void**)r2;
+	assert(t1 == t2);
+	assert(t1 != shared);
+	log_debug("Stage 3: forwarding dedup pass");
+
+	gc_remove_root(&r1);
+	gc_remove_root(&r2);
+}
+
+void test_stage3_promotion() {
+	void* p = gc_malloc(sizeof(void*));
+	gc_add_root(&p);
+
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+
+	assert(which_ptr(p) == SpaceType::Old);
+	log_debug("Stage 3: promotion pass");
+
+	gc_remove_root(&p);
+}
+
+void test_stage3_old_gen_not_moved() {
+	void* p = gc_malloc(sizeof(void*));
+	gc_add_root(&p);
+
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+
+	void* saved_addr = p;
+	heap.collect_minor_gc();
+	assert(p == saved_addr);
+	assert(which_ptr(p) == SpaceType::Old);
+	log_debug("Stage 3: Old Gen not moved pass");
 
 	gc_remove_root(&p);
 }
@@ -115,6 +218,13 @@ int main() {
 	test_stage2_roots_not_duplicated();
 	test_stage2_remove_root();
 	test_stage2_null_root();
+
+	test_stage3_copy_and_root_update();
+	test_stage3_chain_fix();
+	test_stage3_eden_reclaimed();
+	test_stage3_forwarding_dedup();
+	test_stage3_promotion();
+	test_stage3_old_gen_not_moved();
 
 	log_debug("All tests passed");
 	return 0;
