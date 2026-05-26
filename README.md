@@ -10,8 +10,8 @@
 |------|------|------|
 | Stage 1 | GCObject Header + Space + Heap（基本分配） | 已完成 |
 | Stage 2 | GC Roots + 三色标记 | 已完成 |
-| Stage 3 | 复制算法（Minor GC）+ 对象晋升 | 未开始 |
-| Stage 4 | 标记-清除 / 标记-整理（Full GC） | 未开始 |
+| Stage 3 | 复制算法（Minor GC）+ 对象晋升 | 已完成 |
+| Stage 4 | 标记-清除 / 标记-整理（Full GC） | 进行中 |
 | Stage 5 | 引用类型（Soft/Weak/Phantom）+ Card Table | 未开始 |
 
 ## 项目结构
@@ -24,7 +24,7 @@ MinGC/
     │   ├── gcobject.h    # GCObject Header（标记/年龄/大小）
     │   ├── root.h        # GC Roots 管理
     │   ├── mark.h        # 三色标记算法
-    │   └── collector.cpp # Heap 单例 + Minor GC 入口
+    │   └── collector.cpp # Heap 单例 + Minor GC / Full GC 入口
     └── memory/
         ├── space.h       # bump-the-pointer 分配器
         └── heap.h        # 堆布局 + 公开分配 API
