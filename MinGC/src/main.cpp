@@ -209,6 +209,83 @@ void test_stage3_old_gen_not_moved() {
 	gc_remove_root(&p);
 }
 
+// --- Stage 4 tests ---
+void test_stage4_free_list_reuse() {
+	void* p = gc_malloc(64);
+	gc_add_root(&p);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	assert(which_ptr(p) == SpaceType::Old);
+
+	GCObject* old_obj = GCObject::from_user_ptr(p);
+	size_t sz = old_obj->total_size();
+	void* header_addr = old_obj;
+
+	gc_remove_root(&p);
+	heap.collect_full_gc();
+
+	void* reused = heap.old.allocate_raw(sz);
+	assert(reused != nullptr);
+	assert(reused == header_addr);
+	static_cast<GCObject*>(reused)->set_size(sz - sizeof(GCObject));
+	log_debug("Stage 4: free list reuse pass");
+}
+
+void test_stage4_old_gen_dead_reclaim() {
+	void* dead = gc_malloc(64);
+	gc_add_root(&dead);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	GCObject* dead_header = GCObject::from_user_ptr(dead);
+	gc_remove_root(&dead);
+	heap.collect_full_gc();
+
+	void* live = gc_malloc(64);
+	gc_add_root(&live);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	assert(which_ptr(live) == SpaceType::Old);
+	assert(GCObject::from_user_ptr(live) == dead_header);
+	log_debug("Stage 4: Old Gen dead reclaim pass");
+
+	gc_remove_root(&live);
+}
+
+void test_stage4_oom_promotion_retry() {
+	constexpr size_t BIG = OLD_SIZE / 2;
+
+	void* a = gc_malloc(BIG);
+	assert(a != nullptr);
+	gc_add_root(&a);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	assert(which_ptr(a) == SpaceType::Old);
+	gc_remove_root(&a);
+
+	void* b = gc_malloc(BIG);
+	assert(b != nullptr);
+	gc_add_root(&b);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	assert(which_ptr(b) == SpaceType::Old);
+	gc_remove_root(&b);
+
+	void* c = gc_malloc(sizeof(void*));
+	gc_add_root(&c);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	assert(which_ptr(c) == SpaceType::Old);
+	log_debug("Stage 4: OOM promotion retry pass");
+
+	gc_remove_root(&c);
+}
+
 int main() {
 	test_stage1();
 
@@ -225,6 +302,10 @@ int main() {
 	test_stage3_forwarding_dedup();
 	test_stage3_promotion();
 	test_stage3_old_gen_not_moved();
+
+	test_stage4_free_list_reuse();
+	test_stage4_old_gen_dead_reclaim();
+	test_stage4_oom_promotion_retry();
 
 	log_debug("All tests passed");
 	return 0;

@@ -11,7 +11,7 @@
 | Stage 1 | GCObject Header + Space + Heap（基本分配） | 已完成 |
 | Stage 2 | GC Roots + 三色标记 | 已完成 |
 | Stage 3 | 复制算法（Minor GC）+ 对象晋升 | 已完成 |
-| Stage 4 | 标记-清除 / 标记-整理（Full GC） | 进行中 |
+| Stage 4 | 标记-清除（Full GC）+ 自由链表 | 已完成 |
 | Stage 5 | 引用类型（Soft/Weak/Phantom）+ Card Table | 未开始 |
 
 ## 项目结构

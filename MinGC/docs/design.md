@@ -147,7 +147,7 @@ while cursor < heap.old.top:
     obj = (GCObject*)cursor
     if obj->is_marked():
         obj->clear_mark()              // 存活：重置标记
-    else:
+    else if obj->total_size() >= sizeof(FreeBlock):
         fb = (FreeBlock*)obj           // 死亡：原地创建 FreeBlock
         fb->size = obj->total_size()
         fb->next_block = free_list
@@ -158,6 +158,8 @@ while cursor < heap.old.top:
 - 只扫描到 `top`（已分配边界）
 - 头插法避免遍历查找尾节点
 - Old Gen 对象不移动，仅标记为可复用
+- `total_size < sizeof(FreeBlock)` 的对象无法容纳 FreeBlock 头，跳过不回收（变成 **dark matter**）
+- `allocate_raw` 消费 FreeBlock 后，调用方负责写入有效的 GCObject header（`set_size`），确保后续 sweep 能正确解析该区域
 
 ## 阶段规划
 
@@ -166,7 +168,7 @@ while cursor < heap.old.top:
 | Stage 1 | GCObject Header + Space + Heap（基本分配） | `src/gc/gcobject.h`<br>`src/memory/space.h`<br>`src/memory/heap.h` | 已完成 |
 | Stage 2 | GC Roots + 三色标记 | `src/gc/root.h`<br>`src/gc/mark.h`<br>`src/gc/collector.cpp` | 已完成 |
 | Stage 3 | 复制算法（Minor GC）+ 对象晋升 | `src/gc/collector.cpp` | 已完成 |
-| Stage 4 | 标记-清除 / 标记-整理（Full GC） | `src/gc/collector.cpp`<br>`src/memory/space.h` | 进行中 |
+| Stage 4 | 标记-清除（Full GC）+ 自由链表 | `src/gc/collector.cpp`<br>`src/memory/space.h` | 已完成 |
 | Stage 5 | 引用类型（Soft/Weak/Phantom）+ Card Table | | 未开始 |
 
 ## 模块依赖
@@ -216,6 +218,7 @@ collector.cpp ──→ heap.h + mark.h
 | 最小分配单元 | `sizeof(FreeBlock)` | 保证死对象空间可存放 FreeBlock 头部 |
 | Old Gen 自由链表 | 单链表 + 头插法 | Old Gen 死对象就地转为 FreeBlock，无需额外内存 |
 | Old Gen 回收算法 | 标记-清除 | 比标记-整理更简单，引入自由链表和碎片化概念，教学价值更高 |
+| 小对象处理 | 暗物质（跳过不回收） | 尺寸不足 FreeBlock 的死对象不可回收，简化实现，教学上展示碎片问题 |
 
 ## 术语表
 
@@ -231,3 +234,4 @@ collector.cpp ──→ heap.h + mark.h
 - **Forwarding Map**：复制 GC 中的 `old→new` 地址映射，用于 Pass 2 指针修复
 - **两遍扫描（Two-Pass）**：复制回收算法，Pass 1 拷贝存活对象建立映射，Pass 2 修正所有指针
 - **FreeBlock**：覆写在死对象原址上的元数据结构，仅含 size 和 next 字段，不额外分配内存
+- **Dark Matter（暗物质）**：`total_size < sizeof(FreeBlock)` 的死对象，因空间不足以容纳 FreeBlock 头而无法回收，永久占用 Old Gen 空间

@@ -52,6 +52,7 @@ struct Heap
 		std::swap(from_space, to_space);
 	}
 	void collect_minor_gc();
+	void collect_full_gc();
 };
 
 extern Heap heap;

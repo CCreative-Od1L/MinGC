@@ -7,6 +7,8 @@ Heap heap;
 
 std::unordered_set<void**> roots;
 
+void sweep_old();
+
 void Heap::collect_minor_gc() {
 	std::vector<GCObject*> marked_list;
 	std::unordered_map<GCObject*, GCObject*> forwarding_map;
@@ -25,8 +27,11 @@ void Heap::collect_minor_gc() {
 		}
 
 		if (new_obj == nullptr) {
-			// 预留，引发一次 Full GC
-			continue;
+			collect_full_gc();
+			new_obj = heap.old.allocate_raw(obj_total_size);
+			if (!new_obj) {
+				continue;
+			}
 		}
 		obj->inc_age();
 		memcpy(new_obj, obj, obj_total_size);
@@ -76,4 +81,30 @@ void Heap::collect_minor_gc() {
 			obj->clear_mark();
 		}
 	}
+}
+
+void sweep_old() {
+	Space& old_gen = heap.old;
+	old_gen.free_list = nullptr;
+	uint8_t* cur = old_gen.start;
+	while (cur < old_gen.top) {
+		GCObject* header = reinterpret_cast<GCObject*>(cur);
+		size_t obj_size = header->total_size();
+		if (header->is_marked()) {
+			header->clear_mark();
+		}
+		else if (obj_size >= sizeof(FreeBlock)) {
+			FreeBlock* block = reinterpret_cast<FreeBlock*>(header);
+			block->size = obj_size;
+			block->next_block = old_gen.free_list;
+			old_gen.free_list = block;
+		}
+		cur += obj_size;
+	}
+}
+
+void Heap::collect_full_gc() {
+	std::vector<GCObject*> marked_list;
+	mark_phase(marked_list);
+	sweep_old();
 }
