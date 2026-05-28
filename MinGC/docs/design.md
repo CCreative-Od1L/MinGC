@@ -161,6 +161,44 @@ while cursor < heap.old.top:
 - `total_size < sizeof(FreeBlock)` 的对象无法容纳 FreeBlock 头，跳过不回收（变成 **dark matter**）
 - `allocate_raw` 消费 FreeBlock 后，调用方负责写入有效的 GCObject header（`set_size`），确保后续 sweep 能正确解析该区域
 
+## 引用类型（WeakRef / SoftRef）
+
+### 概述
+
+除强引用（`roots`）外，引入两种弱化引用级别，允许在不阻止 GC 的前提下感知对象生命周期。
+
+| 类型 | 阻止回收 | 置 null 时机 |
+|------|---------|-------------|
+| **WeakRef** | 否 | 每次 GC 后，若目标已死 |
+| **SoftRef** | 正常 GC: 是；OOM GC: 否 | OOM 时目标已死 |
+
+两者均使用 `void**` 表示槽位——GC 可直接覆写用户持有的指针，与 Roots 机制一致。
+
+### WeakRef 处理流程
+
+`clear_dead_weak_refs(forwarding_map*)` 在 GC 后遍历所有弱引用槽位：
+
+- **Minor GC**（`forwarding_map` 非空）：若目标在 forwarding_map 中 → 更新为新地址；否则若未标记 → 置 null
+- **Full GC**（`forwarding_map == nullptr`）：纯 `is_marked()` 判断 → 未标记则置 null
+
+调用时机：Minor GC 在 body fix 之后、reset/swap 之前；Full GC 在 sweep 之前。
+
+### SoftRef 处理流程
+
+- **正常 GC**：`mark_phase` 将软引用目标作为额外根（`extra_roots` 参数），保证 GC 不回收它们
+- **OOM Full GC**：`collect_full_gc(true)` 不将软引用作为根；标记 + 清扫后调用 `clear_dead_soft_refs()` 置空死亡目标的槽位
+
+### 存储
+
+与 Roots 一致，使用全局 `std::unordered_set<void**>` 注册表：
+
+```cpp
+extern std::unordered_set<void**> weak_refs;   // collector.cpp 中定义
+extern std::unordered_set<void**> soft_refs;   // collector.cpp 中定义
+```
+
+API：`gc_add_weak_ref(slot)` / `gc_remove_weak_ref(slot)`，软引用同理。
+
 ## 阶段规划
 
 | 阶段 | 内容 | 文件 | 状态 |
@@ -169,7 +207,7 @@ while cursor < heap.old.top:
 | Stage 2 | GC Roots + 三色标记 | `src/gc/root.h`<br>`src/gc/mark.h`<br>`src/gc/collector.cpp` | 已完成 |
 | Stage 3 | 复制算法（Minor GC）+ 对象晋升 | `src/gc/collector.cpp` | 已完成 |
 | Stage 4 | 标记-清除（Full GC）+ 自由链表 | `src/gc/collector.cpp`<br>`src/memory/space.h` | 已完成 |
-| Stage 5 | 引用类型（Soft/Weak/Phantom）+ Card Table | | 未开始 |
+| Stage 5 | 弱引用（WeakRef）+ 软引用（SoftRef） | `src/gc/weakref.h`<br>`src/gc/softref.h`<br>`src/gc/collector.cpp` | 进行中 |
 
 ## 模块依赖
 
@@ -181,6 +219,8 @@ MinGC/
 │   │   ├── gcobject.h
 │   │   ├── root.h
 │   │   ├── mark.h
+│   │   ├── weakref.h
+│   │   ├── softref.h
 │   │   └── collector.cpp
 │   └── memory/
 │       ├── space.h
@@ -194,12 +234,13 @@ main.cpp ──→ heap.h ──→ space.h ──→ gcobject.h
   │  │                      ↑
   │  ├──→ mark.h ───────────┘
   │  │     └──→ root.h
-  │  │
+  │  ├──→ weakref.h ───→ gcobject.h
+  │  └──→ softref.h ───→ gcobject.h
   │
-collector.cpp ──→ heap.h + mark.h
+collector.cpp ──→ heap.h + mark.h + weakref.h + softref.h
 ```
 
-- `collector.cpp` 定义 `Heap heap` 全局单例、`roots` 集合，实现 `collect_minor_gc()` 和 `collect_full_gc()`
+- `collector.cpp` 定义 `Heap heap` 全局单例、`roots`/`weak_refs`/`soft_refs` 集合，实现 `collect_minor_gc()` 和 `collect_full_gc()`
 - `heap.h` 声明 `extern Heap heap`、`gc_malloc()`、`which_ptr()`
 - 无循环依赖
 
@@ -219,6 +260,8 @@ collector.cpp ──→ heap.h + mark.h
 | Old Gen 自由链表 | 单链表 + 头插法 | Old Gen 死对象就地转为 FreeBlock，无需额外内存 |
 | Old Gen 回收算法 | 标记-清除 | 比标记-整理更简单，引入自由链表和碎片化概念，教学价值更高 |
 | 小对象处理 | 暗物质（跳过不回收） | 尺寸不足 FreeBlock 的死对象不可回收，简化实现，教学上展示碎片问题 |
+| 引用类型存储 | `unordered_set<void**>` | 与 Roots 一致，GC 可直接覆写槽位，无需对象格式信息 |
+| SoftRef 存活策略 | 正常 GC 当强引用，OOM 当弱引用 | 教学上最简：一个标记入口参数区分两种行为 |
 
 ## 术语表
 
@@ -235,3 +278,6 @@ collector.cpp ──→ heap.h + mark.h
 - **两遍扫描（Two-Pass）**：复制回收算法，Pass 1 拷贝存活对象建立映射，Pass 2 修正所有指针
 - **FreeBlock**：覆写在死对象原址上的元数据结构，仅含 size 和 next 字段，不额外分配内存
 - **Dark Matter（暗物质）**：`total_size < sizeof(FreeBlock)` 的死对象，因空间不足以容纳 FreeBlock 头而无法回收，永久占用 Old Gen 空间
+- **WeakRef（弱引用）**：不阻止对象回收的引用。GC 后发现目标已死则自动置 `nullptr`
+- **SoftRef（软引用）**：正常 GC 下阻止回收，OOM 时退化为弱引用，允许 GC 释放内存
+- **OOM（Out of Memory）**：晋升 Old Gen 失败时触发的 Full GC，此模式下软引用不保活
