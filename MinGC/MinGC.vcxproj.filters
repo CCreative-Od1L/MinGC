@@ -39,6 +39,9 @@
     <ClInclude Include="src\gc\root.h">
       <Filter>头文件\gc</Filter>
     </ClInclude>
+    <ClInclude Include="src\gc\weakref.h">
+      <Filter>头文件\gc</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -46,6 +49,9 @@
     </ClCompile>
     <ClCompile Include="src\gc\collector.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gc\softref.h">
+      <Filter>头文件\gc</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

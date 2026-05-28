@@ -22,11 +22,13 @@
     <ClInclude Include="src\gc\gcobject.h" />
     <ClInclude Include="src\gc\mark.h" />
     <ClInclude Include="src\gc\root.h" />
+    <ClInclude Include="src\gc\weakref.h" />
     <ClInclude Include="src\memory\heap.h" />
     <ClInclude Include="src\memory\space.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\gc\collector.cpp" />
+    <ClCompile Include="src\gc\softref.h" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -6,6 +6,8 @@
 Heap heap;
 
 std::unordered_set<void**> roots;
+std::unordered_set<void**> weak_refs;
+std::unordered_set<void**> soft_refs;
 
 void sweep_old();
 
