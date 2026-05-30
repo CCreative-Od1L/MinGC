@@ -18,18 +18,25 @@
 
 ```
 MinGC/
-└── src/
-    ├── main.cpp
-    ├── gc/
-    │   ├── gcobject.h    # GCObject Header（标记/年龄/大小）
-    │   ├── root.h        # GC Roots 管理
-    │   ├── mark.h        # 三色标记算法
-    │   ├── weakref.h     # WeakRef 弱引用
-    │   ├── softref.h     # SoftRef 软引用
-    │   └── collector.cpp # Heap 单例 + Minor GC / Full GC 入口
-    └── memory/
-        ├── space.h       # bump-the-pointer 分配器
-        └── heap.h        # 堆布局 + 公开分配 API
+├── src/
+│   ├── main.cpp
+│   ├── gc/
+│   │   ├── gcobject.h    # GCObject Header（标记/年龄/大小）
+│   │   ├── root.h        # GC Roots 管理
+│   │   ├── mark.h        # 三色标记算法
+│   │   ├── weakref.h     # WeakRef 弱引用
+│   │   ├── softref.h     # SoftRef 软引用
+│   │   └── collector.cpp # Heap 单例 + Minor GC / Full GC 入口
+│   └── memory/
+│       ├── space.h       # bump-the-pointer 分配器
+│       └── heap.h        # 堆布局 + 公开分配 API
+└── docs/
+    ├── architecture.md   # 架构文档（模块划分、数据结构、依赖关系）
+    ├── workflow.md       # 工作流程（分配、Minor GC、Full GC 图解）
+    ├── edge-cases.md     # 边界情况与 Bug 修复记录
+    ├── dark-matter.md    # 暗物质专题
+    ├── future.md         # 已知局限与改进方向
+    └── design.md         # 设计文档（阶段规划、决策记录、术语表）
 ```
 
 ## 技术栈
