@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <unordered_set>
 #include "gcobject.h"
 #include "root.h"
 #include "../memory/heap.h"
@@ -21,7 +22,10 @@ inline void scan_object(GCObject* obj, std::vector<GCObject*>& grey_list) {
 	}
 }
 
-inline void mark_phase(std::vector<GCObject*>& marked_list) {
+inline void mark_phase(
+	std::vector<GCObject*>& marked_list,
+	const std::unordered_set<void**>* extra_roots = nullptr
+) {
 	// 灰色对象列表
 	std::vector<GCObject*> grey_list;
 
@@ -35,6 +39,15 @@ inline void mark_phase(std::vector<GCObject*>& marked_list) {
 		}
 	}
 
+	if (extra_roots) {
+		for (void** slot : *extra_roots) {
+			if (!*slot) continue;
+			GCObject* header = GCObject::from_user_ptr(*slot);
+			if (!header->is_marked()) {
+				grey_list.emplace_back(header);
+			}
+		}
+	}
 	while (!grey_list.empty()) {
 		auto obj = grey_list.back();
 		grey_list.pop_back();

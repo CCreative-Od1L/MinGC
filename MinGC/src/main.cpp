@@ -6,6 +6,8 @@
 #include "./gc/gcobject.h"
 #include "./gc/root.h"
 #include "./gc/mark.h"
+#include "./gc/weakref.h"
+#include "./gc/softref.h"
 
 void log_debug(std::string message) {
 	std::cout << message << std::endl;
@@ -286,6 +288,91 @@ void test_stage4_oom_promotion_retry() {
 	gc_remove_root(&c);
 }
 
+// --- Stage 5 tests ---
+void test_stage5_weakref_dead_after_full_gc() {
+	void* p = gc_malloc(64);
+	gc_add_weak_ref(&p);
+
+	heap.collect_full_gc();
+
+	assert(p == nullptr);
+	log_debug("Stage 5: weakref dead after full GC pass");
+
+	gc_remove_weak_ref(&p);
+}
+
+void test_stage5_weakref_alive_with_strong() {
+	void* p = gc_malloc(64);
+	gc_add_root(&p);
+	gc_add_weak_ref(&p);
+
+	heap.collect_full_gc();
+
+	assert(p != nullptr);
+	log_debug("Stage 5: weakref alive with strong pass");
+
+	gc_remove_root(&p);
+	gc_remove_weak_ref(&p);
+}
+
+void test_stage5_weakref_fixed_after_minor_gc() {
+	void* p = gc_malloc(64);
+	void* original = p;
+	gc_add_root(&p);
+	gc_add_weak_ref(&p);
+
+	heap.collect_minor_gc();
+
+	assert(p != nullptr);
+	assert(p != original);
+	log_debug("Stage 5: weakref fixed after minor GC pass");
+
+	gc_remove_root(&p);
+	gc_remove_weak_ref(&p);
+}
+
+void test_stage5_softref_kept_alive() {
+	void* p = gc_malloc(64);
+	gc_add_soft_ref(&p);
+
+	heap.collect_full_gc();
+
+	assert(p != nullptr);
+	log_debug("Stage 5: softref kept alive pass");
+
+	gc_remove_soft_ref(&p);
+}
+
+void test_stage5_softref_cleared_on_oom() {
+	void* soft_target = gc_malloc(64);
+	gc_add_soft_ref(&soft_target);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	assert(which_ptr(soft_target) == SpaceType::Old);
+
+	constexpr size_t BIG = OLD_SIZE / 2;
+
+	void* a = gc_malloc(BIG);
+	gc_add_root(&a);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	gc_remove_root(&a);
+
+	void* b = gc_malloc(BIG);
+	gc_add_root(&b);
+	for (int i = 0; i <= PROMOTION_AGE; i++) {
+		heap.collect_minor_gc();
+	}
+	gc_remove_root(&b);
+
+	assert(soft_target == nullptr);
+	log_debug("Stage 5: softref cleared on OOM pass");
+
+	gc_remove_soft_ref(&soft_target);
+}
+
 int main() {
 	test_stage1();
 
@@ -306,6 +393,14 @@ int main() {
 	test_stage4_free_list_reuse();
 	test_stage4_old_gen_dead_reclaim();
 	test_stage4_oom_promotion_retry();
+
+	log_debug("==== Stage 5 tests ====");
+
+	test_stage5_weakref_dead_after_full_gc();
+	test_stage5_weakref_alive_with_strong();
+	test_stage5_weakref_fixed_after_minor_gc();
+	test_stage5_softref_kept_alive();
+	test_stage5_softref_cleared_on_oom();
 
 	log_debug("All tests passed");
 	return 0;

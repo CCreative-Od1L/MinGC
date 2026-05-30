@@ -2,6 +2,8 @@
 #include <cstring>
 #include "../memory/heap.h"
 #include "mark.h"
+#include "weakref.h"
+#include "softref.h"
 
 Heap heap;
 
@@ -14,7 +16,7 @@ void sweep_old();
 void Heap::collect_minor_gc() {
 	std::vector<GCObject*> marked_list;
 	std::unordered_map<GCObject*, GCObject*> forwarding_map;
-	mark_phase(marked_list);
+	mark_phase(marked_list, &soft_refs);
 
 	for (auto obj : marked_list) {
 		if (which_ptr(obj) == SpaceType::Old) continue;
@@ -29,7 +31,7 @@ void Heap::collect_minor_gc() {
 		}
 
 		if (new_obj == nullptr) {
-			collect_full_gc();
+			collect_full_gc(true);
 			new_obj = heap.old.allocate_raw(obj_total_size);
 			if (!new_obj) {
 				continue;
@@ -42,6 +44,17 @@ void Heap::collect_minor_gc() {
 
 	// 执行根修复
 	for (auto r : roots) {
+		void* old_user_ptr = *r;
+		if (!old_user_ptr) continue;
+		GCObject* old_header = GCObject::from_user_ptr(old_user_ptr);
+		auto it = forwarding_map.find(old_header);
+		if (it != forwarding_map.end()) {
+			*r = it->second->user_ptr();
+		}
+	}
+
+	// 执行软引用指针更新
+	for (auto r : soft_refs) {
 		void* old_user_ptr = *r;
 		if (!old_user_ptr) continue;
 		GCObject* old_header = GCObject::from_user_ptr(old_user_ptr);
@@ -71,7 +84,8 @@ void Heap::collect_minor_gc() {
 			}
 		}
 	}
-
+	
+	clear_dead_weak_refs(&forwarding_map);
 	heap.eden.reset();
 	heap.swap_survivors();
 
@@ -105,8 +119,12 @@ void sweep_old() {
 	}
 }
 
-void Heap::collect_full_gc() {
+void Heap::collect_full_gc(bool is_oom) {
 	std::vector<GCObject*> marked_list;
-	mark_phase(marked_list);
+	mark_phase(marked_list, is_oom ? nullptr : &soft_refs);
 	sweep_old();
+	clear_dead_weak_refs(nullptr);
+	if (is_oom) {
+		clear_dead_soft_refs();
+	}
 }

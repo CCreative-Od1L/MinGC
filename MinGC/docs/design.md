@@ -186,6 +186,7 @@ while cursor < heap.old.top:
 ### SoftRef 处理流程
 
 - **正常 GC**：`mark_phase` 将软引用目标作为额外根（`extra_roots` 参数），保证 GC 不回收它们
+- **Minor GC 指针更新**：与 Roots 相同，软引用槽位在 root fix 之后被遍历，若目标在 `forwarding_map` 中则更新为新地址；否则其槽位仍指向旧（已回收）地址，导致下一轮 GC 丢失追踪
 - **OOM Full GC**：`collect_full_gc(true)` 不将软引用作为根；标记 + 清扫后调用 `clear_dead_soft_refs()` 置空死亡目标的槽位
 
 ### 存储
@@ -207,7 +208,7 @@ API：`gc_add_weak_ref(slot)` / `gc_remove_weak_ref(slot)`，软引用同理。
 | Stage 2 | GC Roots + 三色标记 | `src/gc/root.h`<br>`src/gc/mark.h`<br>`src/gc/collector.cpp` | 已完成 |
 | Stage 3 | 复制算法（Minor GC）+ 对象晋升 | `src/gc/collector.cpp` | 已完成 |
 | Stage 4 | 标记-清除（Full GC）+ 自由链表 | `src/gc/collector.cpp`<br>`src/memory/space.h` | 已完成 |
-| Stage 5 | 弱引用（WeakRef）+ 软引用（SoftRef） | `src/gc/weakref.h`<br>`src/gc/softref.h`<br>`src/gc/collector.cpp` | 进行中 |
+| Stage 5 | 弱引用（WeakRef）+ 软引用（SoftRef） | `src/gc/weakref.h`<br>`src/gc/softref.h`<br>`src/gc/collector.cpp`<br>`src/gc/mark.h` | 已完成 |
 
 ## 模块依赖
 
@@ -240,7 +241,7 @@ main.cpp ──→ heap.h ──→ space.h ──→ gcobject.h
 collector.cpp ──→ heap.h + mark.h + weakref.h + softref.h
 ```
 
-- `collector.cpp` 定义 `Heap heap` 全局单例、`roots`/`weak_refs`/`soft_refs` 集合，实现 `collect_minor_gc()` 和 `collect_full_gc()`
+- `collector.cpp` 定义 `Heap heap` 全局单例、`roots`/`weak_refs`/`soft_refs` 集合，实现 `collect_minor_gc()`（含软引用 forwarding）和 `collect_full_gc(bool is_oom)`
 - `heap.h` 声明 `extern Heap heap`、`gc_malloc()`、`which_ptr()`
 - 无循环依赖
 

@@ -12,7 +12,7 @@
 | Stage 2 | GC Roots + 三色标记 | 已完成 |
 | Stage 3 | 复制算法（Minor GC）+ 对象晋升 | 已完成 |
 | Stage 4 | 标记-清除（Full GC）+ 自由链表 | 已完成 |
-| Stage 5 | 弱引用（WeakRef）+ 软引用（SoftRef） | 进行中 |
+| Stage 5 | 弱引用（WeakRef）+ 软引用（SoftRef） | 已完成 |
 
 ## 项目结构
 
